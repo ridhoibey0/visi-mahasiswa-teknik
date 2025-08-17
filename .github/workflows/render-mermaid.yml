@@ -1,0 +1,53 @@
+name: Render Mermaid to JPG
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "diagrams/**/*.mmd"
+      - ".github/workflows/render-mermaid.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (Mermaid CLI + ImageMagick)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+          npm i -g @mermaid-js/mermaid-cli@10
+
+      - name: Render Mermaid to PNG
+        run: |
+          mkdir -p assets
+          mmdc -i diagrams/mindmap-visi-mahasiswa-teknik.mmd -o assets/mindmap-visi-mahasiswa-teknik.png -s 1.0 -p .puppeteer.json
+
+      - name: Convert PNG to JPG
+        run: |
+          convert assets/mindmap-visi-mahasiswa-teknik.png -background white -flatten -quality 92 assets/mindmap-visi-mahasiswa-teknik.jpg
+
+      - name: Commit generated assets
+        run: |
+          if git status --porcelain | grep -E "assets/mindmap-visi-mahasiswa-teknik.(png|jpg)"; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add assets/mindmap-visi-mahasiswa-teknik.png assets/mindmap-visi-mahasiswa-teknik.jpg
+            git commit -m "chore: auto-generate mind map PNG/JPG from Mermaid"
+            git push
+          else
+            echo "No changes to commit."
+          fi
