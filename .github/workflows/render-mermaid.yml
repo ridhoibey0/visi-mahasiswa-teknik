@@ -1,4 +1,4 @@
-name: Render Mermaid to JPG
+name: Render Mermaid to JPG/PNG/SVG
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
     paths:
       - "diagrams/**/*.mmd"
       - ".github/workflows/render-mermaid.yml"
+      - ".puppeteer.json"
+      - ".mermaid-config.json"
   workflow_dispatch:
 
 permissions:
@@ -14,6 +16,10 @@ permissions:
 jobs:
   render:
     runs-on: ubuntu-latest
+    env:
+      ID_NAMA: "Ridho Azkia Azhar"
+      ID_NPM: "ISI_NPM_ANDA"
+      ID_JURUSAN: "ISI_JURUSAN_ANDA"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,20 +40,48 @@ jobs:
       - name: Render Mermaid to PNG
         run: |
           mkdir -p assets
-          mmdc -i diagrams/mindmap-visi-mahasiswa-teknik.mmd -o assets/mindmap-visi-mahasiswa-teknik.png -s 1.0 -p .puppeteer.json
+          mmdc -i diagrams/mindmap-visi-mahasiswa-teknik.mmd -o assets/mindmap-visi-mahasiswa-teknik.png -s 1.0 -p .puppeteer.json -c .mermaid-config.json
 
       - name: Convert PNG to JPG
         run: |
           convert assets/mindmap-visi-mahasiswa-teknik.png -background white -flatten -quality 92 assets/mindmap-visi-mahasiswa-teknik.jpg
 
-      - name: Commit generated assets
+      - name: Overlay identitas di kiri atas (JPG)
         run: |
-          if git status --porcelain | grep -E "assets/mindmap-visi-mahasiswa-teknik.(png|jpg)"; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add assets/mindmap-visi-mahasiswa-teknik.png assets/mindmap-visi-mahasiswa-teknik.jpg
-            git commit -m "chore: auto-generate mind map PNG/JPG from Mermaid"
-            git push
-          else
+          convert assets/mindmap-visi-mahasiswa-teknik.jpg \
+            -gravity northwest \
+            -fill "#000000" -undercolor "#ffffffcc" \
+            -pointsize 28 \
+            -annotate +24+24 "Nama: ${ID_NAMA}\nNPM: ${ID_NPM}\nJurusan: ${ID_JURUSAN}" \
+            assets/mindmap-visi-mahasiswa-teknik.jpg
+
+      - name: Render Mermaid to SVG (editable for Figma)
+        run: |
+          mmdc -i diagrams/mindmap-visi-mahasiswa-teknik.mmd -o assets/mindmap-visi-mahasiswa-teknik.svg -s 1.0 -p .puppeteer.json -c .mermaid-config.json
+
+      - name: Show outputs
+        run: |
+          ls -lah assets
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: mindmap-assets
+          path: |
+            assets/mindmap-visi-mahasiswa-teknik.png
+            assets/mindmap-visi-mahasiswa-teknik.jpg
+            assets/mindmap-visi-mahasiswa-teknik.svg
+
+      - name: Commit generated assets
+        env:
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/mindmap-visi-mahasiswa-teknik.png assets/mindmap-visi-mahasiswa-teknik.jpg assets/mindmap-visi-mahasiswa-teknik.svg
+          if git diff --cached --quiet; then
             echo "No changes to commit."
+          else
+            git commit -m "chore: auto-generate mind map PNG/JPG/SVG"
+            git push origin HEAD:${GITHUB_REF_NAME}
           fi
