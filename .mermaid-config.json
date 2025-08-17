@@ -1,0 +1,12 @@
+{
+  "theme": "default",
+  "fontFamily": "Inter, Roboto, Arial, sans-serif",
+  "themeVariables": {
+    "primaryColor": "#e8f0fe",
+    "primaryBorderColor": "#1a73e8",
+    "primaryTextColor": "#202124",
+    "lineColor": "#5f6368",
+    "textColor": "#202124",
+    "tertiaryColor": "#ffffff"
+  }
+}
